@@ -93,15 +93,15 @@
                     <label class="block text-sm font-medium text-slate-600 mb-1">Categoría Principal</label>
                     <div class="space-y-2">
                         <label class="flex items-center space-x-2 text-sm cursor-pointer">
-                            <input type="radio" name="cat" value="ALL" checked class="text-indigo-600">
+                            <input type="radio" name="cat" value="all" checked onchange="filterResources()" class="text-indigo-600">
                             <span>Todos los Recursos</span>
                         </label>
                         <label class="flex items-center space-x-2 text-sm cursor-pointer">
-                            <input type="radio" name="cat" value="HW" class="text-indigo-600">
+                            <input type="radio" name="cat" value="hardware" onchange="filterResources()" class="text-indigo-600">
                             <span>Hardware / Equipos</span>
                         </label>
                         <label class="flex items-center space-x-2 text-sm cursor-pointer">
-                            <input type="radio" name="cat" value="SW" class="text-indigo-600">
+                            <input type="radio" name="cat" value="software" onchange="filterResources()" class="text-indigo-600">
                             <span>Software / Licencias</span>
                         </label>
                     </div>
@@ -109,10 +109,10 @@
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-600 mb-1">Disponibilidad</label>
-                    <select id="status-filter" class="w-full border rounded p-2 text-sm bg-slate-50">
-                        <option value="ALL">Cualquier Estado</option>
-                        <option value="Disponible">Disponible</option>
-                        <option value="Ocupado">Ocupado / Reservado</option>
+                    <select id="status-filter" onchange="filterResources()" class="w-full border rounded p-2 text-sm bg-slate-50">
+                        <option value="all">Cualquier Estado</option>
+                        <option value="activo">Disponible</option>
+                        <option value="inactivo">Ocupado / Reservado</option>
                     </select>
                 </div>
             </aside>
@@ -120,14 +120,18 @@
             <!-- Catálogo de Recursos -->
             <section class="lg:col-span-3 space-y-6">
                 <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <input type="text" id="search-input" placeholder="Buscar por nombre, código o laboratorio..." class="w-full md:w-2/3 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="search-input" onkeyup="filterResources()" placeholder="Buscar por nombre, código o laboratorio..." class="w-full md:w-2/3 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <span class="text-xs text-slate-500" id="results-count">Mostrando recursos de la Base de Datos...</span>
                 </div>
 
                 <!-- Grilla Dinámica conectada a MySQL mediante Jinja2 -->
                 <div id="resource-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {% for recurso in recursos_db %}
-                    <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <!-- Agregamos clase resource-card y atributos data para filtrar con JS -->
+                    <div class="resource-card bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col justify-between"
+                         data-tipo="{{ recurso.tipo }}"
+                         data-estado="{{ recurso.estado }}"
+                         data-nombre="{{ recurso.nombre | lower }}">
                         <div>
                             <div class="flex justify-between items-start mb-2">
                                 <span class="text-xs font-bold px-2 py-0.5 rounded {% if recurso.tipo == 'laboratorio' %}bg-blue-100 text-blue-800{% else %}bg-purple-100 text-purple-800{% endif %}">
@@ -209,13 +213,44 @@
 
     <!-- SCRIPT DE LÓGICA FRONTEND -->
     <script>
+        // Lógica de Filtros Dinámicos
+        function filterResources() {
+            const cat = document.querySelector('input[name="cat"]:checked').value.toLowerCase();
+            const status = document.getElementById('status-filter').value.toLowerCase();
+            const search = document.getElementById('search-input').value.toLowerCase();
+
+            const cards = document.querySelectorAll('.resource-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const cardTipo = card.getAttribute('data-tipo').toLowerCase();
+                const cardEstado = card.getAttribute('data-estado').toLowerCase();
+                const cardNombre = card.getAttribute('data-nombre');
+
+                // Validar si la tarjeta cumple con las 3 condiciones
+                const matchCat = (cat === 'all' || cardTipo.includes(cat));
+                const matchStatus = (status === 'all' || cardEstado === status);
+                const matchSearch = cardNombre.includes(search);
+
+                if (matchCat && matchStatus && matchSearch) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none'; // Oculta la tarjeta si no cumple
+                }
+            });
+
+            // Actualizar el contador de resultados
+            document.getElementById('results-count').innerText = `Mostrando ${visibleCount} recurso(s) de la Base de Datos...`;
+        }
+
+        // Lógica del Modal
         function openModal(id) {
             document.getElementById('modal-resource-id').value = id;
             document.getElementById('time-error').classList.add('hidden');
 
             document.getElementById('reserve-form').reset();
 
-            // Bloqueo de fechas pasadas usando la zona horaria local
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('res-date').setAttribute('min', today);
 
@@ -240,14 +275,21 @@
             if (start && endInput.value) {
                 if (endInput.value <= start) {
                     errorBox.classList.remove('hidden');
-                    return false; // Evita que el formulario se envíe
+                    return false;
                 } else {
                     errorBox.classList.add('hidden');
-                    return true; // Permite el envío
+                    return true;
                 }
             }
             return true;
         }
+
+        // Ejecutar los filtros al cargar la página por si hay algún valor guardado en caché
+        window.onload = function() {
+            if(document.querySelector('.resource-card')) {
+                filterResources();
+            }
+        };
     </script>
 </body>
 </html>
