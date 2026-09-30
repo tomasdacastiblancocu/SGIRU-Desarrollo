@@ -98,15 +98,15 @@
                     <label class="block text-sm font-medium text-slate-600 mb-1">Categoría Principal</label>
                     <div class="space-y-2">
                         <label class="flex items-center space-x-2 text-sm cursor-pointer">
-                            <input type="radio" name="cat" value="ALL" checked onclick="filterResources()" class="text-indigo-600">
+                            <input type="radio" name="cat" value="ALL" checked class="text-indigo-600">
                             <span>Todos los Recursos</span>
                         </label>
                         <label class="flex items-center space-x-2 text-sm cursor-pointer">
-                            <input type="radio" name="cat" value="HW" onclick="filterResources()" class="text-indigo-600">
+                            <input type="radio" name="cat" value="HW" class="text-indigo-600">
                             <span>Hardware / Equipos</span>
                         </label>
                         <label class="flex items-center space-x-2 text-sm cursor-pointer">
-                            <input type="radio" name="cat" value="SW" onclick="filterResources()" class="text-indigo-600">
+                            <input type="radio" name="cat" value="SW" class="text-indigo-600">
                             <span>Software / Licencias</span>
                         </label>
                     </div>
@@ -114,7 +114,7 @@
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-600 mb-1">Disponibilidad</label>
-                    <select id="status-filter" onchange="filterResources()" class="w-full border rounded p-2 text-sm bg-slate-50">
+                    <select id="status-filter" class="w-full border rounded p-2 text-sm bg-slate-50">
                         <option value="ALL">Cualquier Estado</option>
                         <option value="Disponible">Disponible</option>
                         <option value="Ocupado">Ocupado / Reservado</option>
@@ -125,12 +125,39 @@
             <!-- Catálogo de Recursos -->
             <section class="lg:col-span-3 space-y-6">
                 <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <input type="text" id="search-input" onkeyup="filterResources()" placeholder="Buscar por nombre, código o laboratorio..." class="w-full md:w-2/3 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <span class="text-xs text-slate-500" id="results-count">Mostrando recursos...</span>
+                    <input type="text" id="search-input" placeholder="Buscar por nombre, código o laboratorio..." class="w-full md:w-2/3 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <span class="text-xs text-slate-500" id="results-count">Mostrando recursos de la Base de Datos...</span>
                 </div>
 
-                <!-- Grilla Dinámica -->
-                <div id="resource-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                <!-- Grilla Dinámica conectada a MySQL mediante Jinja2 -->
+                <div id="resource-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for recurso in recursos_db %}
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-bold px-2 py-0.5 rounded {% if recurso.tipo == 'laboratorio' %}bg-blue-100 text-blue-800{% else %}bg-purple-100 text-purple-800{% endif %}">
+                                    {{ recurso.tipo | capitalize }}
+                                </span>
+                                <span class="text-xs px-2 py-0.5 rounded {% if recurso.estado == 'activo' %}bg-emerald-100 text-emerald-800{% else %}bg-amber-100 text-amber-800{% endif %} font-medium">
+                                    {{ recurso.estado | capitalize }}
+                                </span>
+                            </div>
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-server text-slate-500"></i> {{ recurso.nombre }}
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-1">
+                                <strong>SW:</strong> {{ recurso.req_software }} | <strong>HW:</strong> {{ recurso.req_hardware }}
+                            </p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t flex items-center justify-end gap-2">
+                            <button onclick="openModal('{{ recurso.id }}', 'reserve')" 
+                                class="text-xs px-3 py-1.5 rounded text-white font-medium bg-indigo-600 hover:bg-indigo-700 transition">
+                                Reservar Recurso
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </section>
         </main>
     </div>
@@ -186,18 +213,11 @@
 
     <!-- SCRIPT DE LÓGICA -->
     <script>
+        // Mantengo los usuarios de prueba para el login temporal mientras conectamos esa parte a MySQL
         const validUsers = [
             { email: 'johan@ecci.edu.co', pass: '123456', role: 'Estudiante' },
             { email: 'tomas@ecci.edu.co', pass: '098765', role: 'Administrativo' },
             { email: 'fabio@ecci.edu.co', pass: '102938', role: 'Docente' }
-        ];
-
-        const mockResources = [
-            { id: '101', name: 'Osciloscopio Digital Rigol', category: 'HW', location: 'Lab. Electrónica L-203', status: 'Disponible', icon: 'fa-microchip', date: '', start: '', end: '' },
-            { id: '102', name: 'Laptop Dell XPS 15 (i9/32GB)', category: 'HW', location: 'Préstamo Móvil Cubículo B', status: 'Disponible', icon: 'fa-laptop', date: '', start: '', end: '' },
-            { id: '103', name: 'Licencia MATLAB R2026b Campus', category: 'SW', location: 'Servidor de Licencias Cloud', status: 'Disponible', icon: 'fa-code', date: '', start: '', end: '' },
-            { id: '104', name: 'Licencia AutoCad 3D 2026', category: 'SW', location: 'Servidor de Licencias Cloud', status: 'Ocupado', icon: 'fa-cubes', date: '2026-09-30', start: '08:00', end: '10:00' },
-            { id: '105', name: 'Impresora 3D Ender-3 V2', category: 'HW', location: 'Lab. Prototipado L-105', status: 'Disponible', icon: 'fa-print', date: '', start: '', end: '' }
         ];
 
         // Autenticación
@@ -222,7 +242,8 @@
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('res-date').setAttribute('min', today);
 
-                filterResources();
+                // NOTA: filterResources() fue comentado para que el JS no borre las tarjetas de MySQL inyectadas por Jinja2
+                // filterResources(); 
             } else {
                 errorBox.classList.remove('hidden');
             }
@@ -236,101 +257,19 @@
             document.getElementById('login-screen').classList.remove('hidden');
         }
 
-        // Renderizado del Catálogo
-        function renderGrid(data) {
-            const grid = document.getElementById('resource-grid');
-            grid.innerHTML = '';
-            document.getElementById('results-count').innerText = `Mostrando ${data.length} recurso(s)`;
-
-            data.forEach(item => {
-                const isAvailable = item.status === 'Disponible';
-                const card = document.createElement('div');
-                card.className = `bg-white p-4 rounded-lg shadow-sm border ${isAvailable ? 'border-slate-200' : 'border-amber-200 bg-amber-50/30'} flex flex-col justify-between`;
-                
-                card.innerHTML = `
-                    <div>
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-xs font-bold px-2 py-0.5 rounded ${item.category === 'HW' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}">
-                                ${item.category === 'HW' ? 'Hardware' : 'Software'}
-                            </span>
-                            <span class="text-xs px-2 py-0.5 rounded ${isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'} font-medium">
-                                ${item.status}
-                            </span>
-                        </div>
-                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fa-solid ${item.icon} text-slate-500"></i> ${item.name}
-                        </h3>
-                        <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>${item.location}</p>
-                        
-                        ${!isAvailable && item.date ? `
-                            <div class="mt-2 p-2 bg-amber-100/60 rounded text-[11px] text-amber-900 border border-amber-200">
-                                <i class="fa-regular fa-clock mr-1"></i>Reservado: <strong>${item.date}</strong> (${item.start} -${item.end})
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div class="mt-4 pt-3 border-t flex items-center justify-end gap-2">
-                        ${isAvailable ? `
-                            <button onclick="openModal('${item.id}', 'reserve')" 
-                                class="text-xs px-3 py-1.5 rounded text-white font-medium bg-indigo-600 hover:bg-indigo-700 transition">
-                                Reservar Recurso
-                            </button>
-                        ` : `
-                            <button onclick="openModal('${item.id}', 'reschedule')" 
-                                class="text-xs px-3 py-1.5 rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 font-medium transition flex items-center gap-1">
-                                <i class="fa-solid fa-calendar-days"></i> Cambiar Fecha/Hora
-                            </button>
-                            <button onclick="cancelReservation('${item.id}')" 
-                                class="text-xs px-3 py-1.5 rounded text-rose-700 bg-rose-100 hover:bg-rose-200 font-medium transition flex items-center gap-1">
-                                <i class="fa-solid fa-xmark"></i> Cancelar
-                            </button>
-                        `}
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        // Filtros
-        function filterResources() {
-            const cat = document.querySelector('input[name="cat"]:checked').value;
-            const status = document.getElementById('status-filter').value;
-            const search = document.getElementById('search-input').value.toLowerCase();
-
-            const filtered = mockResources.filter(r => {
-                const matchCat = (cat === 'ALL' || r.category === cat);
-                const matchStatus = (status === 'ALL' || r.status === status);
-                const matchSearch = r.name.toLowerCase().includes(search) || r.location.toLowerCase().includes(search);
-                return matchCat && matchStatus && matchSearch;
-            });
-
-            renderGrid(filtered);
-        }
-
         // Control y Validación de Modal
         function openModal(id, action) {
-            const res = mockResources.find(r => r.id === id);
-            if (!res) return;
-
             document.getElementById('modal-resource-id').value = id;
             document.getElementById('time-error').classList.add('hidden');
 
             const title = document.getElementById('modal-title');
             const submitText = document.getElementById('btn-submit-text');
 
-            if (action === 'reschedule') {
-                title.innerText = `Reagendar: ${res.name}`;
-                submitText.innerText = `Actualizar Reserva`;
-                document.getElementById('res-date').value = res.date || '';
-                document.getElementById('res-start').value = res.start || '';
-                document.getElementById('res-end').value = res.end || '';
-            } else {
-                title.innerText = `Reservar: ${res.name}`;
-                submitText.innerText = `Confirmar Reserva`;
-                document.getElementById('reserve-form').reset();
-                document.getElementById('modal-resource-id').value = id;
-            }
+            title.innerText = `Reservar Recurso`;
+            submitText.innerText = `Confirmar Reserva`;
+            document.getElementById('reserve-form').reset();
 
-            document.getElementById('modal-subtitle').innerText = `Recurso ID: ${id}`;
+            document.getElementById('modal-subtitle').innerText = `Recurso ID BD: ${id}`;
             document.getElementById('reserve-modal').classList.remove('hidden');
         }
 
@@ -340,7 +279,7 @@
             document.getElementById('time-error').classList.add('hidden');
         }
 
-        // VALIDACIÓN DE HORARIOS (Corrige horas invertidas)
+        // VALIDACIÓN DE HORARIOS 
         function validateHours() {
             const start = document.getElementById('res-start').value;
             const endInput = document.getElementById('res-end');
@@ -362,48 +301,22 @@
             return true;
         }
 
-        // Procesar Reserva / Reagendamiento
+        // Procesar Reserva Simulación
         function executeReservation(e) {
             e.preventDefault();
             
             if (!validateHours()) {
-                return; // Bloquea si la hora final es menor o igual a la de inicio
+                return;
             }
 
-            const id = document.getElementById('modal-resource-id').value;
-            const date = document.getElementById('res-date').value;
-            const start = document.getElementById('res-start').value;
-            const end = document.getElementById('res-end').value;
             const loader = document.getElementById('modal-loader');
-            
             loader.classList.remove('hidden');
 
             setTimeout(() => {
-                const res = mockResources.find(r => r.id === id);
-                if (res) {
-                    res.status = 'Ocupado';
-                    res.date = date;
-                    res.start = start;
-                    res.end = end;
-                }
                 loader.classList.add('hidden');
                 closeModal();
-                filterResources();
-                alert('¡Operación realizada exitosamente en el sistema!');
+                alert('La lógica de guardado en base de datos será implementada en el siguiente paso.');
             }, 1500);
-        }
-
-        // CANCELAR RESERVA
-        function cancelReservation(id) {
-            const res = mockResources.find(r => r.id === id);
-            if (res && confirm(`¿Está seguro de cancelar la reserva para "${res.name}"?`)) {
-                res.status = 'Disponible';
-                res.date = '';
-                res.start = '';
-                res.end = '';
-                filterResources();
-                alert('La reserva ha sido cancelada y el espacio ahora está Disponible.');
-            }
         }
     </script>
 </body>
