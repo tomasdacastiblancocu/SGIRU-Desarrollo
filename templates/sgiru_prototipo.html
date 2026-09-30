@@ -145,10 +145,17 @@
                             </p>
                         </div>
                         <div class="mt-4 pt-3 border-t flex items-center justify-end gap-2">
-                            <button onclick="openModal('{{ recurso.id }}', 'reserve')" 
+                            {% if recurso.estado == 'activo' %}
+                            <button onclick="openModal('{{ recurso.id }}')" 
                                 class="text-xs px-3 py-1.5 rounded text-white font-medium bg-indigo-600 hover:bg-indigo-700 transition">
                                 Reservar Recurso
                             </button>
+                            {% else %}
+                            <button disabled
+                                class="text-xs px-3 py-1.5 rounded text-slate-500 font-medium bg-slate-200 cursor-not-allowed transition">
+                                No Disponible
+                            </button>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -157,7 +164,7 @@
         </main>
     </div>
 
-    <!-- MODAL DE RESERVA Y REAGENDAMIENTO -->
+    <!-- MODAL DE RESERVA -->
     <div id="reserve-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex justify-center items-center z-50 p-4">
         <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl relative">
             <h3 class="text-lg font-bold text-slate-800 mb-2" id="modal-title">Reservar Recurso</h3>
@@ -168,22 +175,23 @@
                 <span>La hora de finalización debe ser posterior a la hora de inicio.</span>
             </div>
 
-            <form id="reserve-form" onsubmit="executeReservation(event)" class="space-y-4">
-                <input type="hidden" id="modal-resource-id">
+            <!-- Formulario conectado a la ruta /reservar de Python -->
+            <form action="/reservar" method="POST" id="reserve-form" class="space-y-4" onsubmit="return validateHours()">
+                <input type="hidden" name="recurso_id" id="modal-resource-id">
                 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha de Reserva</label>
-                    <input type="date" id="res-date" required class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <input type="date" name="fecha" id="res-date" required class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Hora Inicio</label>
-                        <input type="time" id="res-start" required onchange="validateHours()" class="w-full border rounded px-3 py-2 text-sm">
+                        <input type="time" name="hora_inicio" id="res-start" required onchange="validateHours()" class="w-full border rounded px-3 py-2 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Hora Fin</label>
-                        <input type="time" id="res-end" required onchange="validateHours()" class="w-full border rounded px-3 py-2 text-sm">
+                        <input type="time" name="hora_fin" id="res-end" required onchange="validateHours()" class="w-full border rounded px-3 py-2 text-sm">
                     </div>
                 </div>
 
@@ -195,29 +203,19 @@
                     </button>
                 </div>
             </form>
-
-            <div id="modal-loader" class="absolute inset-0 bg-white/90 rounded-lg hidden flex flex-col justify-center items-center space-y-3">
-                <div class="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                <p class="text-xs font-semibold text-indigo-900">Validando traslapes e invocando bloqueo transaccional MySQL...</p>
-            </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- SCRIPT DE LÓGICA -->
+    <!-- SCRIPT DE LÓGICA FRONTEND -->
     <script>
-        function openModal(id, action) {
+        function openModal(id) {
             document.getElementById('modal-resource-id').value = id;
             document.getElementById('time-error').classList.add('hidden');
 
-            const title = document.getElementById('modal-title');
-            const submitText = document.getElementById('btn-submit-text');
-
-            title.innerText = `Reservar Recurso`;
-            submitText.innerText = `Confirmar Reserva`;
             document.getElementById('reserve-form').reset();
 
-            // Bloqueo de fechas pasadas
+            // Bloqueo de fechas pasadas usando la zona horaria local
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('res-date').setAttribute('min', today);
 
@@ -227,7 +225,6 @@
 
         function closeModal() {
             document.getElementById('reserve-modal').classList.add('hidden');
-            document.getElementById('modal-loader').classList.add('hidden');
             document.getElementById('time-error').classList.add('hidden');
         }
 
@@ -243,27 +240,13 @@
             if (start && endInput.value) {
                 if (endInput.value <= start) {
                     errorBox.classList.remove('hidden');
-                    return false;
+                    return false; // Evita que el formulario se envíe
                 } else {
                     errorBox.classList.add('hidden');
-                    return true;
+                    return true; // Permite el envío
                 }
             }
             return true;
-        }
-
-        function executeReservation(e) {
-            e.preventDefault();
-            if (!validateHours()) return;
-
-            const loader = document.getElementById('modal-loader');
-            loader.classList.remove('hidden');
-
-            setTimeout(() => {
-                loader.classList.add('hidden');
-                closeModal();
-                alert('La lógica de guardado en base de datos será implementada en el siguiente paso.');
-            }, 1500);
         }
     </script>
 </body>
