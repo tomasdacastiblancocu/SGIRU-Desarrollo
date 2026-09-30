@@ -1,14 +1,18 @@
 from flask import Flask, render_template
+from flask_sqlalchemy import SQLAlchemy
 
-# Inicializar la aplicación Flask
 app = Flask(__name__)
 
-# Definir la ruta principal (Home)
+# Configuración de conexión a MySQL (usuario 'root', sin contraseña, base de datos 'sgiru_db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost:3306/sgiru_db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Inicializar el ORM
+db = SQLAlchemy(app)
+
 @app.route('/')
 def home():
-    # Flask buscará automáticamente dentro de la carpeta "templates"
     return render_template('sgiru_prototipo.html')
 
-# Iniciar el servidor en modo debug
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
