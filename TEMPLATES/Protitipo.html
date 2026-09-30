@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGIRU - Sistema de Gestión Inteligente de Recursos Universitarios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen flex flex-col">
+
+    <!-- 1. PANTALLA DE LOGIN -->
+    <div id="login-screen" class="fixed inset-0 bg-slate-900 flex justify-center items-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md border border-slate-100">
+            <div class="text-center mb-6">
+                <div class="inline-flex p-3 bg-indigo-100 text-indigo-900 rounded-full mb-3">
+                    <i class="fa-solid fa-university text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800">SGIRU ECCI</h2>
+                <p class="text-xs text-slate-500 mt-1">Sistema de Gestión Inteligente de Recursos Universitarios</p>
+            </div>
+
+            <!-- Alerta Credenciales Inválidas -->
+            <div id="login-error" class="hidden mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs flex items-center gap-2">
+                <i class="fa-solid fa-circle-exclamation text-sm flex-shrink-0"></i>
+                <span>La información no es válida, vuelva a intentarlo.</span>
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Correo Institucional</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-envelope text-sm"></i>
+                        </span>
+                        <input type="email" id="login-email" placeholder="usuario@ecci.edu.co" required 
+                            class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Contraseña</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-lock text-sm"></i>
+                        </span>
+                        <input type="password" id="login-password" placeholder="••••••••" required 
+                            class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50">
+                    </div>
+                </div>
+
+                <button type="submit" 
+                    class="w-full py-2.5 bg-indigo-900 hover:bg-indigo-800 text-white font-semibold text-sm rounded-lg transition shadow-md flex justify-center items-center gap-2">
+                    <span>Iniciar Sesión</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </form>
+            
+            <div class="mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center">
+                <p class="font-semibold text-slate-500 mb-1">Usuarios Demo Autorizados:</p>
+                <p>johan@ecci.edu.co (123456) | Estudiante</p>
+                <p>tomas@ecci.edu.co (098765) | Administrativo</p>
+                <p>fabio@ecci.edu.co (102938) | Docente</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. APLICACIÓN PRINCIPAL -->
+    <div id="main-app" class="hidden flex-col min-h-screen">
+        <!-- Navbar -->
+        <header class="bg-indigo-900 text-white shadow-md">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-university text-2xl text-indigo-400"></i>
+                    <h1 class="text-xl font-bold tracking-wide">SGIRU <span class="text-xs font-normal bg-indigo-700 px-2 py-1 rounded ml-2">v1.0 MVP</span></h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm border-r border-indigo-700 pr-4">
+                        Usuario: <strong id="logged-email-display" class="text-indigo-200">correo@ecci.edu.co</strong> 
+                        (<span id="user-display" class="font-bold text-amber-300">Rol</span>)
+                    </span>
+                    <button onclick="handleLogout()" class="text-xs bg-rose-700 hover:bg-rose-600 px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Cerrar Sesión</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Container -->
+        <main class="container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
+
+            <!-- Sidebar Filtros -->
+            <aside class="bg-white p-5 rounded-lg shadow-sm border border-slate-200 h-fit">
+                <h2 class="text-lg font-semibold mb-4 text-slate-700 border-b pb-2"><i class="fa-solid fa-filter mr-2 text-indigo-600"></i>Filtros de Búsqueda</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Categoría Principal</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                            <input type="radio" name="cat" value="ALL" checked onclick="filterResources()" class="text-indigo-600">
+                            <span>Todos los Recursos</span>
+                        </label>
+                        <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                            <input type="radio" name="cat" value="HW" onclick="filterResources()" class="text-indigo-600">
+                            <span>Hardware / Equipos</span>
+                        </label>
+                        <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                            <input type="radio" name="cat" value="SW" onclick="filterResources()" class="text-indigo-600">
+                            <span>Software / Licencias</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Disponibilidad</label>
+                    <select id="status-filter" onchange="filterResources()" class="w-full border rounded p-2 text-sm bg-slate-50">
+                        <option value="ALL">Cualquier Estado</option>
+                        <option value="Disponible">Disponible</option>
+                        <option value="Ocupado">Ocupado / Reservado</option>
+                    </select>
+                </div>
+            </aside>
+
+            <!-- Catálogo de Recursos -->
+            <section class="lg:col-span-3 space-y-6">
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <input type="text" id="search-input" onkeyup="filterResources()" placeholder="Buscar por nombre, código o laboratorio..." class="w-full md:w-2/3 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <span class="text-xs text-slate-500" id="results-count">Mostrando recursos...</span>
+                </div>
+
+                <!-- Grilla Dinámica -->
+                <div id="resource-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL DE RESERVA Y REAGENDAMIENTO -->
+    <div id="reserve-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex justify-center items-center z-50 p-4">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl relative">
+            <h3 class="text-lg font-bold text-slate-800 mb-2" id="modal-title">Reservar Recurso</h3>
+            <p class="text-xs text-slate-500 mb-4" id="modal-subtitle"></p>
+
+            <!-- Alerta Inconsistencia de Horario -->
+            <div id="time-error" class="hidden mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-sm flex-shrink-0"></i>
+                <span>La hora de finalización debe ser posterior a la hora de inicio.</span>
+            </div>
+
+            <form id="reserve-form" onsubmit="executeReservation(event)" class="space-y-4">
+                <input type="hidden" id="modal-resource-id">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha de Reserva</label>
+                    <input type="date" id="res-date" required class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Hora Inicio</label>
+                        <input type="time" id="res-start" required onchange="validateHours()" class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Hora Fin</label>
+                        <input type="time" id="res-end" required onchange="validateHours()" class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs bg-slate-200 hover:bg-slate-300 rounded font-medium">Cancelar</button>
+                    <button type="submit" id="btn-submit-res" class="px-4 py-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded font-medium flex items-center gap-1">
+                        <i class="fa-solid fa-calendar-check"></i>
+                        <span id="btn-submit-text">Confirmar Reserva</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Overlay Carga MySQL -->
+            <div id="modal-loader" class="absolute inset-0 bg-white/90 rounded-lg hidden flex flex-col justify-center items-center space-y-3">
+                <div class="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-xs font-semibold text-indigo-900">Validando traslapes e invocando bloqueo transaccional MySQL...</p>
+                <p class="text-[10px] text-slate-400">Verificando aislamiento de concurrencia (FOR UPDATE)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE LÓGICA -->
+    <script>
+        const validUsers = [
+            { email: 'johan@ecci.edu.co', pass: '123456', role: 'Estudiante' },
+            { email: 'tomas@ecci.edu.co', pass: '098765', role: 'Administrativo' },
+            { email: 'fabio@ecci.edu.co', pass: '102938', role: 'Docente' }
+        ];
+
+        const mockResources = [
+            { id: '101', name: 'Osciloscopio Digital Rigol', category: 'HW', location: 'Lab. Electrónica L-203', status: 'Disponible', icon: 'fa-microchip', date: '', start: '', end: '' },
+            { id: '102', name: 'Laptop Dell XPS 15 (i9/32GB)', category: 'HW', location: 'Préstamo Móvil Cubículo B', status: 'Disponible', icon: 'fa-laptop', date: '', start: '', end: '' },
+            { id: '103', name: 'Licencia MATLAB R2026b Campus', category: 'SW', location: 'Servidor de Licencias Cloud', status: 'Disponible', icon: 'fa-code', date: '', start: '', end: '' },
+            { id: '104', name: 'Licencia AutoCad 3D 2026', category: 'SW', location: 'Servidor de Licencias Cloud', status: 'Ocupado', icon: 'fa-cubes', date: '2026-09-30', start: '08:00', end: '10:00' },
+            { id: '105', name: 'Impresora 3D Ender-3 V2', category: 'HW', location: 'Lab. Prototipado L-105', status: 'Disponible', icon: 'fa-print', date: '', start: '', end: '' }
+        ];
+
+        // Autenticación
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value.trim();
+            const pass = document.getElementById('login-password').value;
+            const errorBox = document.getElementById('login-error');
+
+            const foundUser = validUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.pass === pass);
+
+            if (foundUser) {
+                errorBox.classList.add('hidden');
+                document.getElementById('logged-email-display').innerText = foundUser.email;
+                document.getElementById('user-display').innerText = foundUser.role;
+
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('main-app').classList.add('flex');
+
+                // Bloqueo de fechas pasadas en el modal
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('res-date').setAttribute('min', today);
+
+                filterResources();
+            } else {
+                errorBox.classList.remove('hidden');
+            }
+        }
+
+        function handleLogout() {
+            document.getElementById('login-form').reset();
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('flex');
+            document.getElementById('login-screen').classList.remove('hidden');
+        }
+
+        // Renderizado del Catálogo
+        function renderGrid(data) {
+            const grid = document.getElementById('resource-grid');
+            grid.innerHTML = '';
+            document.getElementById('results-count').innerText = `Mostrando ${data.length} recurso(s)`;
+
+            data.forEach(item => {
+                const isAvailable = item.status === 'Disponible';
+                const card = document.createElement('div');
+                card.className = `bg-white p-4 rounded-lg shadow-sm border ${isAvailable ? 'border-slate-200' : 'border-amber-200 bg-amber-50/30'} flex flex-col justify-between`;
+                
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-bold px-2 py-0.5 rounded ${item.category === 'HW' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}">
+                                ${item.category === 'HW' ? 'Hardware' : 'Software'}
+                            </span>
+                            <span class="text-xs px-2 py-0.5 rounded ${isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'} font-medium">
+                                ${item.status}
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid ${item.icon} text-slate-500"></i> ${item.name}
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>${item.location}</p>
+                        
+                        ${!isAvailable && item.date ? `
+                            <div class="mt-2 p-2 bg-amber-100/60 rounded text-[11px] text-amber-900 border border-amber-200">
+                                <i class="fa-regular fa-clock mr-1"></i>Reservado: <strong>${item.date}</strong> (${item.start} -${item.end})
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="mt-4 pt-3 border-t flex items-center justify-end gap-2">
+                        ${isAvailable ? `
+                            <button onclick="openModal('${item.id}', 'reserve')" 
+                                class="text-xs px-3 py-1.5 rounded text-white font-medium bg-indigo-600 hover:bg-indigo-700 transition">
+                                Reservar Recurso
+                            </button>
+                        ` : `
+                            <button onclick="openModal('${item.id}', 'reschedule')" 
+                                class="text-xs px-3 py-1.5 rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 font-medium transition flex items-center gap-1">
+                                <i class="fa-solid fa-calendar-days"></i> Cambiar Fecha/Hora
+                            </button>
+                            <button onclick="cancelReservation('${item.id}')" 
+                                class="text-xs px-3 py-1.5 rounded text-rose-700 bg-rose-100 hover:bg-rose-200 font-medium transition flex items-center gap-1">
+                                <i class="fa-solid fa-xmark"></i> Cancelar
+                            </button>
+                        `}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Filtros
+        function filterResources() {
+            const cat = document.querySelector('input[name="cat"]:checked').value;
+            const status = document.getElementById('status-filter').value;
+            const search = document.getElementById('search-input').value.toLowerCase();
+
+            const filtered = mockResources.filter(r => {
+                const matchCat = (cat === 'ALL' || r.category === cat);
+                const matchStatus = (status === 'ALL' || r.status === status);
+                const matchSearch = r.name.toLowerCase().includes(search) || r.location.toLowerCase().includes(search);
+                return matchCat && matchStatus && matchSearch;
+            });
+
+            renderGrid(filtered);
+        }
+
+        // Control y Validación de Modal
+        function openModal(id, action) {
+            const res = mockResources.find(r => r.id === id);
+            if (!res) return;
+
+            document.getElementById('modal-resource-id').value = id;
+            document.getElementById('time-error').classList.add('hidden');
+
+            const title = document.getElementById('modal-title');
+            const submitText = document.getElementById('btn-submit-text');
+
+            if (action === 'reschedule') {
+                title.innerText = `Reagendar: ${res.name}`;
+                submitText.innerText = `Actualizar Reserva`;
+                document.getElementById('res-date').value = res.date || '';
+                document.getElementById('res-start').value = res.start || '';
+                document.getElementById('res-end').value = res.end || '';
+            } else {
+                title.innerText = `Reservar: ${res.name}`;
+                submitText.innerText = `Confirmar Reserva`;
+                document.getElementById('reserve-form').reset();
+                document.getElementById('modal-resource-id').value = id;
+            }
+
+            document.getElementById('modal-subtitle').innerText = `Recurso ID: ${id}`;
+            document.getElementById('reserve-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('reserve-modal').classList.add('hidden');
+            document.getElementById('modal-loader').classList.add('hidden');
+            document.getElementById('time-error').classList.add('hidden');
+        }
+
+        // VALIDACIÓN DE HORARIOS (Corrige horas invertidas)
+        function validateHours() {
+            const start = document.getElementById('res-start').value;
+            const endInput = document.getElementById('res-end');
+            const errorBox = document.getElementById('time-error');
+
+            if (start) {
+                endInput.setAttribute('min', start);
+            }
+
+            if (start && endInput.value) {
+                if (endInput.value <= start) {
+                    errorBox.classList.remove('hidden');
+                    return false;
+                } else {
+                    errorBox.classList.add('hidden');
+                    return true;
+                }
+            }
+            return true;
+        }
+
+        // Procesar Reserva / Reagendamiento
+        function executeReservation(e) {
+            e.preventDefault();
+            
+            if (!validateHours()) {
+                return; // Bloquea si la hora final es menor o igual a la de inicio
+            }
+
+            const id = document.getElementById('modal-resource-id').value;
+            const date = document.getElementById('res-date').value;
+            const start = document.getElementById('res-start').value;
+            const end = document.getElementById('res-end').value;
+            const loader = document.getElementById('modal-loader');
+            
+            loader.classList.remove('hidden');
+
+            setTimeout(() => {
+                const res = mockResources.find(r => r.id === id);
+                if (res) {
+                    res.status = 'Ocupado';
+                    res.date = date;
+                    res.start = start;
+                    res.end = end;
+                }
+                loader.classList.add('hidden');
+                closeModal();
+                filterResources();
+                alert('¡Operación realizada exitosamente en el sistema!');
+            }, 1500);
+        }
+
+        // CANCELAR RESERVA
+        function cancelReservation(id) {
+            const res = mockResources.find(r => r.id === id);
+            if (res && confirm(`¿Está seguro de cancelar la reserva para "${res.name}"?`)) {
+                res.status = 'Disponible';
+                res.date = '';
+                res.start = '';
+                res.end = '';
+                filterResources();
+                alert('La reserva ha sido cancelada y el espacio ahora está Disponible.');
+            }
+        }
+    </script>
+</body>
+</html>
